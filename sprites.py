@@ -10,3 +10,4 @@ class Sprite(pg.sprite.Sprite):
         self.image.fill('black')
 
         self.rect = self.image.get_frect(topleft=pos)
+        self.old_rect = self.rect.copy()
