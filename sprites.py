@@ -5,6 +5,7 @@ class Sprite(pg.sprite.Sprite):
     def __init__(self, pos, surface, groups):
         super().__init__(groups)
 
+        # Sprite setup
         self.image = pg.Surface((TILE_SIZE, TILE_SIZE))
         self.image.fill('black')
 
