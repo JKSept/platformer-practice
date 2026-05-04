@@ -28,8 +28,9 @@ class Level:
 
     def run(self, dt):
         # update all sprites
-        self.all_sprites.update(dt)
+        
 
         self.display_surface.fill('gray')
+        self.all_sprites.update(dt)
         # draw all sprites
         self.all_sprites.draw(self.display_surface)

@@ -1,4 +1,5 @@
 from settings import *
+from timer import Timer
 
 
 class Player(pg.sprite.Sprite):
@@ -16,22 +17,37 @@ class Player(pg.sprite.Sprite):
         self.direction = vector()
         self.speed = 200
         self.gravity = 1000
+        self.jump = False 
+        self.jump_height = 900
 
         # Collision setup
         self.collision_sprites = collision_sprites
+        self.on_surface = {'floor': False, 'left': False, 'right': False}
+
+        # timer 
+        self.timers = {
+            'wall_jump': Timer(400)
+        }
         
 
     # Inputs
     def input(self):
         keys = pg.key.get_pressed()
         input_vector = vector(0,0)
-        if keys[pg.K_w]:
-            input_vector.y -= 1
+        # left and right
+        if not self.timers['wall_jump'].active:      
+            if keys[pg.K_a]:
+                input_vector.x -= 1
+                
+            if keys[pg.K_d]:
+                input_vector.x += 1
+        
+            self.direction.x = input_vector.normalize().x if input_vector else input_vector.x
+
+        # jumping
+        if keys[pg.K_SPACE]:
+            self.jump = True
             
-        if keys[pg.K_s]:
-            input_vector.y += 1
-            
-        self.direction.x = input_vector.normalize().x if input_vector else input_vector.x
 
     # Movement 
     def move(self, dt):
@@ -39,10 +55,42 @@ class Player(pg.sprite.Sprite):
         self.rect.x += self.direction.x * self.speed * dt
         self.collision('horizontal')
         # vertical
-        self.direction.y += self.gravity / 2 * dt
-        self.rect.y += self.direction.y * dt
-        self.direction.y += self.gravity / 2 * dt
+            # jump
+        if self.jump:
+            
+            if self.on_surface['floor']:
+                self.direction.y = -self.jump_height
+            elif any ((self.on_surface['left'], self.on_surface['right'])):
+                self.timers['wall_jump'].activate()
+                self.direction.y = -self.jump_height
+                self.direction.x = 1 if self.on_surface['left'] else -1
+            self.jump = False
+
+
+        if not self.on_surface['floor'] and any ((self.on_surface['left'], self.on_surface['right'])) and not self.timers['wall_jump'].active:
+            self.direction.y = max(self.direction.y, 0)
+            self.rect.y += self.gravity / 10 * dt
+        else:
+            self.direction.y += self.gravity / 2 * dt
+            self.rect.y += self.direction.y * dt
+            self.direction.y += self.gravity / 2 * dt
+        
+       
+        
         self.collision('vertical')
+    # helper method for to check for collision contact states
+    def check_contact(self):
+        floor_rect = pg.Rect(self.rect.bottomleft,(self.rect.width, 2))
+        right_rect = pg.Rect(self.rect.topright + vector(0, self.rect.height / 4), (2, self.rect.height / 2))
+        left_rect = pg.Rect(self.rect.topleft + vector(-2, self.rect.height / 4), (2, self.rect.height / 2))
+
+        collide_rects = [sprite.rect for sprite in self.collision_sprites]
+
+        self.on_surface['floor'] = True if floor_rect.collidelist(collide_rects) >= 0 else False
+        self.on_surface['right'] = True if right_rect.collidelist(collide_rects) >= 0 else False
+        self.on_surface['left'] = True if left_rect.collidelist(collide_rects) >= 0 else False
+        
+
 
 
     # Collision
@@ -66,10 +114,16 @@ class Player(pg.sprite.Sprite):
                     self.direction.y = 0
 
 
+    def update_timers(self):
+        for timer in self.timers.values():
+            timer.update()
+
     # Update player method
     def update(self, dt):
         self.old_rect = self.rect.copy()
+        self.update_timers()
         self.input()
         self.move(dt)
+        self.check_contact()
 
         
